@@ -45,6 +45,7 @@ Then run:
 go run . https://myforum.mydomain.com
 ```
 
+You can then download `meta_discourse` directory locally.
 
 # Customize the output
 
@@ -53,5 +54,7 @@ You can change:
 * `tmpl_main.html` : template for home page
 * `tmpl_topic.html` : template for topic page
 
+
+# Inspiration
 
 This program is a port of https://www.marksmath.org/ArchiveDiscourse/
