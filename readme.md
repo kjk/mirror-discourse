@@ -1,6 +1,8 @@
-This is a Go program that creates a static mirror of Discourse forum.
+# Static HTML mirror of Discourse forums
 
-Creating a static copy of Discourse forum with web mirroring tools like `wget` is pretty much impossible.
+This is a Go program that creates a simple, static HTML mirror of Discourse forum.
+
+Creating a static copy of Discourse forum with web mirroring tools like `wget` is pretty much impossible (I tried).
 
 This tool uses Discourse's JSON APIs to overcome this.
 
@@ -54,7 +56,22 @@ You can change:
 * `tmpl_main.html` : template for home page
 * `tmpl_topic.html` : template for topic page
 
+In `main.go` you can also change `banner_html` to html fragment displayed at the top of every page. Alternatively, change `tmpl_main.html` and `tmpl_topic.html`.
+
+I used it to point people to new forum. 
 
 # Inspiration
 
 This program is a port of https://www.marksmath.org/ArchiveDiscourse/
+
+ArchiveDiscourse is a Jupiter notebook and I just coulddn't figure out how to run it locally.
+
+So I ported it instead.
+
+# No support
+
+This code worked for me.
+
+If it doesn't work for you, tough.
+
+I will not help you, so don't ask.

@@ -250,6 +250,7 @@ func main() {
 
 	if len(os.Args) != 2 {
 		fmt.Fprintf(os.Stderr, "Usage: mirror-discourse <discourse-forum-url>\n")
+		fmt.Fprintf(os.Stderr, "See https://github.com/kjk/mirror-discourse/blob/main/readme.md\n")
 		os.Exit(0)
 	}
 	base_url = strings.TrimSuffix(os.Args[1], "/")
