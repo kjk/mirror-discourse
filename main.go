@@ -16,6 +16,11 @@ import (
 	"github.com/kjk/common/u"
 )
 
+var (
+	flgNoCache = false
+	cacheDir   = "cache"
+)
+
 // var banner_html = `<div style="color: red; padding-top: 1em; font-size: 20pt; font-weight: bold;">
 // <center>
 // Forum moved <a href="https://github.com/sumatrapdfreader/sumatrapdf/discussions">here</a>!
@@ -62,7 +67,7 @@ func write_topic(topic_json *Topic) {
 	err := os.MkdirAll(topic_relative_dir, 0755)
 	must(err)
 	var topic TopicResponse
-	requests_get_json_must(topic_download_url+".json", &topic)
+	httpGetJSONCachedMust(topic_download_url+".json", &topic, cacheDir)
 	posts_json := topic.PostStream.Posts
 	post_list_string := ""
 	for _, post_json := range posts_json {
@@ -84,7 +89,7 @@ func writeURLToFileMust(uri string, path string) {
 		logf("writeURLToFileMust: '%s' already exists\n", path)
 		return
 	}
-	response := requests_get_must(uri)
+	response := httpGetMust(uri)
 	writeFileMust(path, response)
 }
 
@@ -93,7 +98,7 @@ func writeURLToFile(uri string, path string) {
 		logf("writeURLToFile: '%s' already exists\n", path)
 		return
 	}
-	response, err := requests_get(uri)
+	response, err := httpGetCached(uri, cacheDir)
 	if err != nil {
 		return
 	}
@@ -122,7 +127,7 @@ func postBodyTransform(content string) string {
 	img_tags := soup.Find("img")
 	img_tags.Text()
 	for _, img_tag := range img_tags.Nodes {
-		img_url := getAttrMust(img_tag.Attr, "src")
+		img_url := nodeGetAttrMust(img_tag.Attr, "src")
 		parsed_url, err := url.Parse(img_url)
 		must(err)
 		urlPath := parsed_url.Path
@@ -134,7 +139,7 @@ func postBodyTransform(content string) string {
 		img_url = fixupURL(img_url)
 		imgPath := filepath.Join(imagesDir, file_name)
 		writeURLToFile(img_url, imgPath)
-		setAttr(img_tag, "src", "../../../images/"+file_name)
+		nodeSetAttr(img_tag, "src", "../../../images/"+file_name)
 	}
 	html, err := soup.Html()
 	must(err)
@@ -183,7 +188,7 @@ func build_categories() {
 	var category_json CategoriesResponse
 	var category_url = base_url + "/categories.json"
 	// logf("category_url: %s\n", category_url)
-	requests_get_json_must(category_url, &category_json)
+	httpGetJSONCachedMust(category_url, &category_json, cacheDir)
 	for _, cat := range category_json.CategoryList.Categories {
 		id := cat.ID
 		name := cat.Name
@@ -218,7 +223,7 @@ func topic_row(topic_json *Topic) string {
 
 // extract some information about site from HTML
 func extract_site_info() {
-	content := requests_get_must(base_url)
+	content := httpGetMust(base_url)
 	r := bytes.NewBuffer(content)
 	soup, err := goquery.NewDocumentFromReader(r)
 	must(err)
@@ -297,7 +302,7 @@ func main() {
 		uri := base_url + "/latest.json?no_definitions=true&page=" + fmt.Sprintf("%d", pageNo)
 		pageNo++
 		var topics TopicsResponse
-		requests_get_json_must(uri, &topics)
+		httpGetJSONCachedMust(uri, &topics, cacheDir)
 		topic_list := topics.TopicList.Topics
 		for _, topic := range topic_list {
 			// logf("Topic: %#v\n", topic)

@@ -19,7 +19,7 @@ var (
 	must    = u.Must
 )
 
-func getAttr(attrs []html.Attribute, name string) (string, bool) {
+func nodeGetAttr(attrs []html.Attribute, name string) (string, bool) {
 	for _, attr := range attrs {
 		if attr.Key == name {
 			return attr.Val, true
@@ -28,15 +28,15 @@ func getAttr(attrs []html.Attribute, name string) (string, bool) {
 	return "", false
 }
 
-func getAttrMust(attrs []html.Attribute, name string) string {
-	s, ok := getAttr(attrs, name)
+func nodeGetAttrMust(attrs []html.Attribute, name string) string {
+	s, ok := nodeGetAttr(attrs, name)
 	if !ok {
 		panic(fmt.Sprintf("didn't find attribute '%s'", name))
 	}
 	return s
 }
 
-func setAttr(node *html.Node, name string, val string) {
+func nodeSetAttr(node *html.Node, name string, val string) {
 	for i, attr := range node.Attr {
 		if attr.Key == name {
 			node.Attr[i].Val = val
@@ -50,7 +50,7 @@ func logf(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 }
 
-func requests_get_with_delay(uri string, delay time.Duration) ([]byte, error) {
+func httpGetRetry(uri string, delay time.Duration) ([]byte, error) {
 	if delay != 0 {
 		time.Sleep(delay)
 	}
@@ -68,7 +68,7 @@ func requests_get_with_delay(uri string, delay time.Duration) ([]byte, error) {
 		default:
 			return nil, fmt.Errorf("failed with status code %d", rsp.StatusCode)
 		}
-		return requests_get_with_delay(uri, delay)
+		return httpGetRetry(uri, delay)
 	}
 	if rsp.StatusCode != 200 {
 		return nil, fmt.Errorf("failed with status code %d", rsp.StatusCode)
@@ -76,20 +76,62 @@ func requests_get_with_delay(uri string, delay time.Duration) ([]byte, error) {
 	return ioutil.ReadAll(rsp.Body)
 }
 
-func requests_get(uri string) ([]byte, error) {
-	logf("request_get: '%s'\n", uri)
-	return requests_get_with_delay(uri, 0)
+func httpGet(uri string) ([]byte, error) {
+	logf("httpGet: '%s'\n", uri)
+	return httpGetRetry(uri, 0)
 }
 
-func requests_get_must(uri string) []byte {
-	d, err := requests_get(uri)
+func httpGetCached(uri string, cacheDir string) ([]byte, error) {
+	if flgNoCache {
+		return httpGet(uri)
+	}
+	var ext string
+	pu, err := url.Parse(uri)
+	if err == nil {
+		ext = filepath.Ext(pu.Path)
+	}
+
+	fileName := u.DataSha1Hex([]byte(uri)) + ext
+	path := filepath.Join(cacheDir, fileName)
+	d, err := os.ReadFile(path)
+	if err == nil {
+		logf("Read '%s' from '%s'\n", uri, path)
+		return d, nil
+	}
+	d, err = httpGet(uri)
+	if err != nil {
+		return nil, err
+	}
+	// it's ok if we fail to write to cache
+	err = os.MkdirAll(cacheDir, 0755)
+	must(err)
+	err = os.WriteFile(path, d, 0644)
+	must(err)
+	logf("Wrote '%s' to '%s'\n", uri, path)
+	return d, nil
+}
+
+// func httpGetCachedMust(uri string, cacheDir string) []byte {
+// 	d, err := httpGetCached(uri, cacheDir)
+// 	must(err)
+// 	return d
+// }
+
+func httpGetMust(uri string) []byte {
+	d, err := httpGet(uri)
 	must(err)
 	return d
 }
 
-func requests_get_json_must(uri string, v interface{}) {
-	logf("requests_get_json_must: %s\n", uri)
-	d, err := requests_get(uri)
+// func httpGetJSONMust(uri string, v interface{}) {
+// 	d, err := httpGet(uri)
+// 	must(err)
+// 	err = json.Unmarshal(d, v)
+// 	must(err)
+// }
+
+func httpGetJSONCachedMust(uri string, v interface{}, cacheDir string) {
+	d, err := httpGetCached(uri, cacheDir)
 	must(err)
 	err = json.Unmarshal(d, v)
 	must(err)
@@ -103,12 +145,12 @@ func fixupURL(uri string) string {
 	}
 	if parsed_url.Host == "" {
 		res := base_url + uri
-		logf("fixupURL: %s => %s\n", uri, res)
+		// logf("fixupURL: %s => %s\n", uri, res)
 		return res
 	}
 	if parsed_url.Scheme == "" {
 		res := base_scheme + ":" + uri
-		logf("fixupURL: %s => %s\n", uri, res)
+		// logf("fixupURL: %s => %s\n", uri, res)
 		return res
 	}
 	return uri
