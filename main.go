@@ -293,7 +293,7 @@ func main() {
 	build_categories()
 
 	maxPages := 999
-	if true {
+	if false {
 		maxPages = 1
 	}
 	pageNo := 0
@@ -344,5 +344,7 @@ func uploadToInstantPrev() {
 	uri := "https://www.instantpreview.dev/upload"
 	rsp, err := httputil.Post(uri, d)
 	must(err)
-	logf("uploaded for preview:\n%s\n", string(rsp))
+	uri = string(rsp)
+	logf("uploaded for preview:\n%s\n", uri)
+	u.OpenBrowser(uri)
 }
