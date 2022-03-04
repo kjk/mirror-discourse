@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/kjk/common/httputil"
 	"github.com/kjk/common/u"
 )
 
@@ -327,4 +328,16 @@ func main() {
 	}
 
 	logf("Wrote website copy to %s\n", dstDir)
+	uploadToInstantPrev()
+}
+
+func uploadToInstantPrev() {
+	logf("uploadToInsantPrev\n")
+	d, err := u.ZipDir(dstDir)
+	must(err)
+	logf("zipped %s, size: %s\n", dstDir, u.FormatSize(int64(len(d))))
+	uri := "https://www.instantpreview.dev/upload"
+	rsp, err := httputil.Post(uri, d)
+	must(err)
+	logf("uploaded for preview:\n%s\n", string(rsp))
 }
