@@ -47,11 +47,11 @@ var css []byte
 
 // Template for the main page. Subsequent code will replace a few items indicated by
 //go:embed tmpl_main.html
-var main_template string
+var mainTmpl string
 
 // Template for the individual topic pages
 //go:embed tmpl_topic.html
-var topic_template string
+var topicTmpl string
 
 var base_url = ""
 var base_scheme = ""
@@ -62,26 +62,26 @@ var site_title = "Dummy title"
 
 // Function that writes out each individual topic page
 func write_topic(topic_json *Topic) {
-	topic_download_url := base_url + "/t/" + topic_json.Slug + "/" + strconv.Itoa(topic_json.ID)
-	topic_relative_dir := filepath.Join(dstDir, "t", topic_json.Slug, strconv.Itoa(topic_json.ID))
-	err := os.MkdirAll(topic_relative_dir, 0755)
+	uri := base_url + "/t/" + topic_json.Slug + "/" + strconv.Itoa(topic_json.ID)
+	topicDir := filepath.Join(dstDir, "t", topic_json.Slug)
+	topicPath := filepath.Join(topicDir, strconv.Itoa(topic_json.ID)+".html")
+	err := os.MkdirAll(topicDir, 0755)
 	must(err)
+
 	var topic TopicResponse
-	httpGetJSONCachedMust(topic_download_url+".json", &topic, cacheDir)
+	httpGetJSONCachedMust(uri+".json", &topic, cacheDir)
 	posts_json := topic.PostStream.Posts
-	post_list_string := ""
+	postStr := ""
 	for _, post_json := range posts_json {
-		post_list_string = post_list_string + post_row(post_json)
+		postStr = postStr + post_row(post_json)
 	}
-	topic_file_string := strings.ReplaceAll(topic_template, "<!-- TOPIC_TITLE -->", topic_json.FancyTitle)
-	topic_file_string = strings.ReplaceAll(topic_file_string, "<!-- BANNER_HTML -->", banner_html)
-	topic_file_string = strings.ReplaceAll(topic_file_string, "<!-- JUST_SITE_TITLE -->", site_title)
+	topicStr := strings.ReplaceAll(topicTmpl, "<!-- TOPIC_TITLE -->", topic_json.FancyTitle)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- BANNER_HTML -->", banner_html)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- JUST_SITE_TITLE -->", site_title)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- ARCHIVE_BLURB -->", archive_blurb)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- POST_LIST -->", postStr)
 
-	topic_file_string = strings.ReplaceAll(topic_file_string, "<!-- ARCHIVE_BLURB -->", archive_blurb)
-	topic_file_string = strings.ReplaceAll(topic_file_string, "<!-- POST_LIST -->", post_list_string)
-
-	topic_path := filepath.Join(topic_relative_dir, "index.html")
-	os.WriteFile(topic_path, []byte(topic_file_string), 0644)
+	os.WriteFile(topicPath, []byte(topicStr), 0644)
 }
 
 func writeURLToFileMust(uri string, path string) {
@@ -294,7 +294,7 @@ func main() {
 
 	maxPages := 999
 	if false {
-		maxPages = 1
+		maxPages = 3
 	}
 	pageNo := 0
 	topic_list_string := ""
@@ -315,16 +315,15 @@ func main() {
 		}
 	}
 
-	file_string := main_template
-	file_string = strings.ReplaceAll(file_string, "<!-- BANNER_HTML -->", banner_html)
-	file_string = strings.Replace(file_string, "<!-- TITLE -->", site_title, -1)
-	file_string = strings.Replace(file_string, "<!-- JUST_SITE_TITLE -->", site_title, -1)
-	file_string = strings.Replace(file_string, "<!-- ARCHIVE_BLURB -->", archive_blurb, -1)
-	file_string = strings.Replace(file_string, "<!-- TOPIC_LIST -->", topic_list_string, -1)
+	html := strings.ReplaceAll(mainTmpl, "<!-- BANNER_HTML -->", banner_html)
+	html = strings.Replace(html, "<!-- TITLE -->", site_title, -1)
+	html = strings.Replace(html, "<!-- JUST_SITE_TITLE -->", site_title, -1)
+	html = strings.Replace(html, "<!-- ARCHIVE_BLURB -->", archive_blurb, -1)
+	html = strings.Replace(html, "<!-- TOPIC_LIST -->", topic_list_string, -1)
 
 	{
 		dst := filepath.Join(dstDir, "index.html")
-		writeFileMust(dst, []byte(file_string))
+		writeFileMust(dst, []byte(html))
 	}
 
 	{
