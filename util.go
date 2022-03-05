@@ -145,16 +145,16 @@ func httpGetJSONCachedMust(uri string, v interface{}, cacheDir string) {
 func fixupURL(uri string) string {
 	parsed_url, err := url.Parse(uri)
 	must(err)
-	if base_scheme == "" {
-		base_scheme = "https"
+	if baseScheme == "" {
+		baseScheme = "https"
 	}
 	if parsed_url.Host == "" {
-		res := base_url + uri
+		res := baseURL + uri
 		// logf("fixupURL: %s => %s\n", uri, res)
 		return res
 	}
 	if parsed_url.Scheme == "" {
-		res := base_scheme + ":" + uri
+		res := baseScheme + ":" + uri
 		// logf("fixupURL: %s => %s\n", uri, res)
 		return res
 	}
