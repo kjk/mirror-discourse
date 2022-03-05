@@ -263,7 +263,7 @@ func main() {
 	args := flag.Args()
 
 	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "Usage: mirror-discourse [-dir <out-dir>] <discourse-forum-url>\n")
+		flag.Usage()
 		fmt.Fprintf(os.Stderr, "See https://github.com/kjk/mirror-discourse/blob/main/readme.md\n")
 		os.Exit(0)
 	}
@@ -276,6 +276,12 @@ func main() {
 
 	dstDir = flgDstDir
 	imagesDir = filepath.Join(dstDir, "images")
+	if flgDstDir != "www" {
+		// make cacheDir a sibling of flgDstDir
+		dir, err := filepath.Abs(flgDstDir)
+		must(err)
+		cacheDir = filepath.Join(filepath.Dir(dir), "cache")
+	}
 
 	baseURL = strings.TrimSuffix(args[0], "/")
 	logf(ctx(), "base_url: '%s'\n", baseURL)

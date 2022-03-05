@@ -6,6 +6,8 @@ Creating a static copy of Discourse forum with web mirroring tools like `wget` i
 
 This tool uses Discourse's JSON APIs to overcome this.
 
+Example mirror: https://forum.sumatrapdfreader.org/
+
 # How to run it
 
 Let's assume your Discourse forum is hosted on https://myforum.mydomain.com
@@ -14,13 +16,16 @@ Run:
 ```
 mirror-discourse https://myforum.mydomain.com
 ```
-This creates a static HTML mirror in `meta_discourse` directory.
+This creates a static HTML mirror in `www` directory and starts a local server to preview it at http://localhost:8777
 
-You can `cd meta_discourse` and open `index.html` to see the preview in the browser.
+You can then deploy such website publicly using e.g. https://render.com or netlify or vercel.
 
-For full fidelity you nned to use a web server that can serve a URL `/foo` from file `/foo/index.html`.
+## Options
 
-You can then deploy such website publicly using e.g. https://render.com
+Available cmd-line options:
+* `-dir <directory>` : changes the output directory from `www`. Will also create `cache` directory as a sibiling directory
+* `-limit <n>` : a large forum will take a long time to process. If you're just testing, use `-limit 1` to only process first page of results
+* `-banner <banner.html>` : you can add a piece of HTML to be shown at the top of generated `index.html` e.g. a notice that this is read-only forum and maybe a link to new forum. See `sumatra_forum_banner.html` for example. Alternatively, you can edit `tmpl_main.html` or edit `index.html` after it was generated.
 
 ## If you have Go compiler installed
 
