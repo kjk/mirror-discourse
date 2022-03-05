@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -46,8 +47,12 @@ func nodeSetAttr(node *html.Node, name string, val string) {
 	panic(fmt.Sprintf("didn't find attribute '%s'", name))
 }
 
-func logf(format string, args ...interface{}) {
+func logf(ctx context.Context, format string, args ...interface{}) {
 	fmt.Printf(format, args...)
+}
+
+func ctx() context.Context {
+	return context.Background()
 }
 
 func httpGetRetry(uri string, delay time.Duration) ([]byte, error) {
@@ -77,7 +82,7 @@ func httpGetRetry(uri string, delay time.Duration) ([]byte, error) {
 }
 
 func httpGet(uri string) ([]byte, error) {
-	logf("httpGet: '%s'\n", uri)
+	logf(ctx(), "httpGet: '%s'\n", uri)
 	return httpGetRetry(uri, 0)
 }
 
@@ -95,7 +100,7 @@ func httpGetCached(uri string, cacheDir string) ([]byte, error) {
 	path := filepath.Join(cacheDir, fileName)
 	d, err := os.ReadFile(path)
 	if err == nil {
-		logf("Read '%s' from '%s'\n", uri, path)
+		logf(ctx(), "Read '%s' from '%s'\n", uri, path)
 		return d, nil
 	}
 	d, err = httpGet(uri)
@@ -107,7 +112,7 @@ func httpGetCached(uri string, cacheDir string) ([]byte, error) {
 	must(err)
 	err = os.WriteFile(path, d, 0644)
 	must(err)
-	logf("Wrote '%s' to '%s'\n", uri, path)
+	logf(ctx(), "Wrote '%s' to '%s'\n", uri, path)
 	return d, nil
 }
 
@@ -162,7 +167,7 @@ func writeFileMust(path string, d []byte) {
 	must(err)
 	err = os.WriteFile(path, d, 0644)
 	must(err)
-	logf("Wrote %s\n", path)
+	logf(ctx(), "Wrote %s\n", path)
 }
 
 func writeFile(path string, d []byte) error {
@@ -175,6 +180,6 @@ func writeFile(path string, d []byte) error {
 	if err != nil {
 		return err
 	}
-	logf("Wrote %s\n", path)
+	logf(ctx(), "Wrote %s\n", path)
 	return nil
 }

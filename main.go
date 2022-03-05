@@ -89,7 +89,7 @@ func write_topic(topic_json *Topic) {
 
 func writeURLToFileMust(uri string, path string) {
 	if u.FileExists(path) {
-		logf("writeURLToFileMust: '%s' already exists\n", path)
+		logf(ctx(), "writeURLToFileMust: '%s' already exists\n", path)
 		return
 	}
 	response := httpGetMust(uri)
@@ -98,7 +98,7 @@ func writeURLToFileMust(uri string, path string) {
 
 func writeURLToFile(uri string, path string) {
 	if u.FileExists(path) {
-		logf("writeURLToFile: '%s' already exists\n", path)
+		logf(ctx(), "writeURLToFile: '%s' already exists\n", path)
 		return
 	}
 	response, err := httpGetCached(uri, cacheDir)
@@ -186,7 +186,7 @@ func post_row(post_json *Post) string {
 var category_id_to_name = map[int]string{}
 
 func build_categories() {
-	logf("build_categories\n")
+	logf(ctx(), "build_categories\n")
 	panicIf(len(category_id_to_name) > 0)
 	var category_json CategoriesResponse
 	var category_url = base_url + "/categories.json"
@@ -196,7 +196,7 @@ func build_categories() {
 		id := cat.ID
 		name := cat.Name
 		category_id_to_name[id] = name
-		logf("cat: %d => %s\n", id, name)
+		logf(ctx(), "cat: %d => %s\n", id, name)
 	}
 }
 
@@ -231,11 +231,11 @@ func extract_site_info() {
 	soup, err := goquery.NewDocumentFromReader(r)
 	must(err)
 	site_title = soup.Find("title").First().Text()
-	logf("site_title: '%s'\n", site_title)
+	logf(ctx(), "site_title: '%s'\n", site_title)
 
 	siteLogoNode := soup.Find("img#site-logo")
 	siteLogoURL, ok := siteLogoNode.First().Attr("src")
-	logf("siteLogoURL: '%s'\n", siteLogoURL)
+	logf(ctx(), "siteLogoURL: '%s'\n", siteLogoURL)
 	if ok {
 		// TODO:should use the right extension and update main_template
 		//dst := filepath.Join(imagesDir, "site-logo"+filepath.Ext(siteLogoURL))
@@ -274,7 +274,7 @@ func main() {
 	imagesDir = filepath.Join(dstDir, "images")
 
 	base_url = strings.TrimSuffix(args[0], "/")
-	logf("base_url: '%s'\n", base_url)
+	logf(ctx(), "base_url: '%s'\n", base_url)
 	archive_blurb = "A partial archive of meta.discourse.org as of " + time.Now().String() + "."
 	// TODO: format current date
 	//+ date.today().strftime("%A %B %d, %Y") + '.'
@@ -307,8 +307,8 @@ func main() {
 	build_categories()
 
 	maxPages := 999
-	if false {
-		maxPages = 3
+	if true {
+		maxPages = 1
 	}
 	pageNo := 0
 	topic_list_string := ""
@@ -345,19 +345,12 @@ func main() {
 		writeFileMust(dst, []byte(css))
 	}
 
-	logf("Wrote website copy to %s\n", dstDir)
-	uploadToInstantPrev()
-}
-
-func uploadToInstantPrev() {
-	logf("uploadToInsantPrev\n")
-	d, err := u.ZipDir(dstDir)
-	must(err)
-	logf("zipped %s, size: %s\n", dstDir, u.FormatSize(int64(len(d))))
-	uri := "https://www.instantpreview.dev/upload"
-	rsp, err := httputil.Post(uri, d)
-	must(err)
-	uri = string(rsp)
-	logf("uploaded for preview:\n%s\n", uri)
-	u.OpenBrowser(uri)
+	logf(ctx(), "Wrote website copy to %s\n", dstDir)
+	opts := httputil.SimpleServerOptions{
+		Dir:         dstDir,
+		HTTPAddress: "localhost:8777",
+	}
+	logf(ctx(), "Running preview on http://"+opts.HTTPAddress+"\n")
+	u.OpenBrowser("http://" + opts.HTTPAddress)
+	httputil.SimpleServer(opts)
 }

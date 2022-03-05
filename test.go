@@ -4,5 +4,5 @@ var cookedTest = "\u003cp\u003eI’ve been working on this file since 4 to 5 day
 
 func testPostBodyTransform() {
 	html := postBodyTransform(cookedTest)
-	logf("HTML:\n%s\n", html)
+	logf(ctx(), "HTML:\n%s\n", html)
 }
