@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -53,12 +54,14 @@ var mainTmpl string
 //go:embed tmpl_topic.html
 var topicTmpl string
 
-var base_url = ""
-var base_scheme = ""
-var archive_blurb = ""
-var dstDir = "meta_discourse"
-var imagesDir = filepath.Join(dstDir, "images")
-var site_title = "Dummy title"
+var (
+	base_url      = ""
+	base_scheme   = ""
+	archive_blurb = ""
+	dstDir        = ""
+	imagesDir     = ""
+	site_title    = "Dummy title"
+)
 
 // Function that writes out each individual topic page
 func write_topic(topic_json *Topic) {
@@ -254,12 +257,23 @@ func main() {
 		return
 	}
 
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "Usage: mirror-discourse <discourse-forum-url>\n")
+	var (
+		flgDstDir string
+	)
+	flag.StringVar(&flgDstDir, "dir", "www", "directory where to save html files")
+	flag.Parse()
+	args := flag.Args()
+
+	if len(args) != 1 {
+		fmt.Fprintf(os.Stderr, "Usage: mirror-discourse [-dir <out-dir>] <discourse-forum-url>\n")
 		fmt.Fprintf(os.Stderr, "See https://github.com/kjk/mirror-discourse/blob/main/readme.md\n")
 		os.Exit(0)
 	}
-	base_url = strings.TrimSuffix(os.Args[1], "/")
+
+	dstDir = flgDstDir
+	imagesDir = filepath.Join(dstDir, "images")
+
+	base_url = strings.TrimSuffix(args[0], "/")
 	logf("base_url: '%s'\n", base_url)
 	archive_blurb = "A partial archive of meta.discourse.org as of " + time.Now().String() + "."
 	// TODO: format current date
