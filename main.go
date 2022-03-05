@@ -22,13 +22,7 @@ var (
 	cacheDir   = "cache"
 )
 
-// var banner_html = `<div style="color: red; padding-top: 1em; font-size: 20pt; font-weight: bold;">
-// <center>
-// Forum moved <a href="https://github.com/sumatrapdfreader/sumatrapdf/discussions">here</a>!
-// </center>
-// </div>`
-
-var banner_html = ""
+var bannerHTML = ""
 
 // This is a port of https://www.marksmath.org/ArchiveDiscourse/
 // https://meta.discourse.org/t/a-basic-discourse-archival-tool/62614
@@ -55,17 +49,17 @@ var mainTmpl string
 var topicTmpl string
 
 var (
-	base_url      = ""
-	base_scheme   = ""
-	archive_blurb = ""
-	dstDir        = ""
-	imagesDir     = ""
-	site_title    = "Dummy title"
+	baseURL      = ""
+	baseScheme   = ""
+	archiveBlurb = ""
+	dstDir       = ""
+	imagesDir    = ""
+	siteTitle    = "Dummy title"
 )
 
 // Function that writes out each individual topic page
 func write_topic(topic_json *Topic) {
-	uri := base_url + "/t/" + topic_json.Slug + "/" + strconv.Itoa(topic_json.ID)
+	uri := baseURL + "/t/" + topic_json.Slug + "/" + strconv.Itoa(topic_json.ID)
 	topicDir := filepath.Join(dstDir, "t", topic_json.Slug)
 	topicPath := filepath.Join(topicDir, strconv.Itoa(topic_json.ID)+".html")
 	err := os.MkdirAll(topicDir, 0755)
@@ -79,9 +73,9 @@ func write_topic(topic_json *Topic) {
 		postStr = postStr + post_row(post_json)
 	}
 	topicStr := strings.ReplaceAll(topicTmpl, "<!-- TOPIC_TITLE -->", topic_json.FancyTitle)
-	topicStr = strings.ReplaceAll(topicStr, "<!-- BANNER_HTML -->", banner_html)
-	topicStr = strings.ReplaceAll(topicStr, "<!-- JUST_SITE_TITLE -->", site_title)
-	topicStr = strings.ReplaceAll(topicStr, "<!-- ARCHIVE_BLURB -->", archive_blurb)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- BANNER_HTML -->", bannerHTML)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- JUST_SITE_TITLE -->", siteTitle)
+	topicStr = strings.ReplaceAll(topicStr, "<!-- ARCHIVE_BLURB -->", archiveBlurb)
 	topicStr = strings.ReplaceAll(topicStr, "<!-- POST_LIST -->", postStr)
 
 	os.WriteFile(topicPath, []byte(topicStr), 0644)
@@ -189,7 +183,7 @@ func build_categories() {
 	logf(ctx(), "build_categories\n")
 	panicIf(len(category_id_to_name) > 0)
 	var category_json CategoriesResponse
-	var category_url = base_url + "/categories.json"
+	var category_url = baseURL + "/categories.json"
 	// logf("category_url: %s\n", category_url)
 	httpGetJSONCachedMust(category_url, &category_json, cacheDir)
 	for _, cat := range category_json.CategoryList.Categories {
@@ -226,12 +220,12 @@ func topic_row(topic_json *Topic) string {
 
 // extract some information about site from HTML
 func extract_site_info() {
-	content := httpGetMust(base_url)
+	content := httpGetMust(baseURL)
 	r := bytes.NewBuffer(content)
 	soup, err := goquery.NewDocumentFromReader(r)
 	must(err)
-	site_title = soup.Find("title").First().Text()
-	logf(ctx(), "site_title: '%s'\n", site_title)
+	siteTitle = soup.Find("title").First().Text()
+	logf(ctx(), "site_title: '%s'\n", siteTitle)
 
 	siteLogoNode := soup.Find("img#site-logo")
 	siteLogoURL, ok := siteLogoNode.First().Attr("src")
@@ -258,9 +252,13 @@ func main() {
 	}
 
 	var (
-		flgDstDir string
+		flgDstDir     string
+		flgLimitPages int
+		flgBannerFile string
 	)
 	flag.StringVar(&flgDstDir, "dir", "www", "directory where to save html files")
+	flag.IntVar(&flgLimitPages, "limit", -1, "limit number of pages")
+	flag.StringVar(&flgBannerFile, "banner", "", "name of the banner HTML")
 	flag.Parse()
 	args := flag.Args()
 
@@ -270,20 +268,26 @@ func main() {
 		os.Exit(0)
 	}
 
+	if flgBannerFile != "" {
+		d, err := os.ReadFile(flgBannerFile)
+		must(err)
+		bannerHTML = string(d)
+	}
+
 	dstDir = flgDstDir
 	imagesDir = filepath.Join(dstDir, "images")
 
-	base_url = strings.TrimSuffix(args[0], "/")
-	logf(ctx(), "base_url: '%s'\n", base_url)
-	archive_blurb = "A partial archive of meta.discourse.org as of " + time.Now().String() + "."
+	baseURL = strings.TrimSuffix(args[0], "/")
+	logf(ctx(), "base_url: '%s'\n", baseURL)
+	archiveBlurb = "A partial archive of meta.discourse.org as of " + time.Now().String() + "."
 	// TODO: format current date
 	//+ date.today().strftime("%A %B %d, %Y") + '.'
-	archive_blurb = ""
+	archiveBlurb = ""
 
 	// Templates for the webpages
-	parsedURL, err := url.Parse(base_url)
+	parsedURL, err := url.Parse(baseURL)
 	must(err)
-	base_scheme = parsedURL.Scheme
+	baseScheme = parsedURL.Scheme
 
 	// The action is just starting here.
 
@@ -306,14 +310,14 @@ func main() {
 
 	build_categories()
 
-	maxPages := 999
-	if true {
-		maxPages = 1
+	maxPages := flgLimitPages
+	if maxPages <= 0 {
+		maxPages = 9999 // unlimited, in practice
 	}
 	pageNo := 0
 	topic_list_string := ""
 	for pageNo < maxPages {
-		uri := base_url + "/latest.json?no_definitions=true&page=" + fmt.Sprintf("%d", pageNo)
+		uri := baseURL + "/latest.json?no_definitions=true&page=" + fmt.Sprintf("%d", pageNo)
 		pageNo++
 		var topics TopicsResponse
 		httpGetJSONCachedMust(uri, &topics, cacheDir)
@@ -329,10 +333,10 @@ func main() {
 		}
 	}
 
-	html := strings.ReplaceAll(mainTmpl, "<!-- BANNER_HTML -->", banner_html)
-	html = strings.Replace(html, "<!-- TITLE -->", site_title, -1)
-	html = strings.Replace(html, "<!-- JUST_SITE_TITLE -->", site_title, -1)
-	html = strings.Replace(html, "<!-- ARCHIVE_BLURB -->", archive_blurb, -1)
+	html := strings.ReplaceAll(mainTmpl, "<!-- BANNER_HTML -->", bannerHTML)
+	html = strings.Replace(html, "<!-- TITLE -->", siteTitle, -1)
+	html = strings.Replace(html, "<!-- JUST_SITE_TITLE -->", siteTitle, -1)
+	html = strings.Replace(html, "<!-- ARCHIVE_BLURB -->", archiveBlurb, -1)
 	html = strings.Replace(html, "<!-- TOPIC_LIST -->", topic_list_string, -1)
 
 	{
